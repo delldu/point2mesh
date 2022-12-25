@@ -3,8 +3,8 @@ import os
 import numpy as np
 import torch
 
-MANIFOLD_DIR = r'~/code/Manifold/build'  # path to manifold software (https://github.com/hjwdzh/Manifold)
-
+MANIFOLD_DIR = r'addons/Manifold/build'  # path to manifold software (https://github.com/hjwdzh/Manifold)
+# addons/ManifoldPlus/build/
 
 class Options:
     def __init__(self):

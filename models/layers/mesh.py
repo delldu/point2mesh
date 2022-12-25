@@ -6,11 +6,15 @@ import copy
 from pathlib import Path
 import pickle
 from pytorch3d.ops.knn import knn_gather, knn_points
-
+import pdb
 
 class Mesh:
 
     def __init__(self, file, hold_history=False, vs=None, faces=None, device='cpu', gfmm=True):
+        # file = './data/g_initmesh.obj'
+        # hold_history = True
+        # device = device(type='cuda', index=0)
+
         if file is None:
             return
         self.filename = Path(file)
@@ -40,6 +44,14 @@ class Mesh:
         self.vs = self.vs.to(self.device)
         self.faces = self.faces.to(self.device).long()
         self.area, self.normals = self.face_areas_normals(self.vs, self.faces)
+
+        # self.vs.size() -- [1002, 3]
+        # self.faces.size() -- [2000, 3]
+        # self.area.size() -- [2000]
+        # self.normals.size() -- [2000, 3]
+        # self.gfmm.size() -- [2000, 4]
+        # self.edges.shape -- (3000, 2)
+        # self.gemm_edges.shape -- (3000, 4)
 
     def build_gemm(self):
         self.ve = [[] for _ in self.vs]
@@ -81,10 +93,10 @@ class Mesh:
         self.edges = np.array(edges, dtype=np.int32)
         self.gemm_edges = np.array(edge_nb, dtype=np.int64)
         self.sides = np.array(sides, dtype=np.int64)
-        self.edges_count = edges_count
+        self.edges_count = edges_count # 3000
         # lots of DS for loss
         self.nvs, self.nvsi, self.nvsin = [], [], []
-        for i, e in enumerate(self.ve):
+        for i, e in enumerate(self.ve): # len(self.ve) -- 1002, self.ve[0] -- [19, 20, 40, 41, 255]
             self.nvs.append(len(e))
             self.nvsi.append(len(e) * [i])
             self.nvsin.append(list(range(len(e))))
@@ -317,6 +329,9 @@ class Mesh:
     def submesh(self, vs_index):
         return PartMesh.create_submesh(vs_index, self)
 
+    def __repr__(self):
+        return f"Mesh Vertices: {self.vs.shape}, Faces: {self.faces.shape}, Edges: {self.edges.shape}"
+
 
 class PartMesh:
     """
@@ -329,6 +344,13 @@ class PartMesh:
         :param vs_groups: tensor the size of vs that contains the submesh index from 0 upto number_of_sub_meshes - 1
         :param num_parts: number of parts to seperate the main_mesh into
         """
+
+        # main_mesh = Mesh Vertices: torch.Size([1002, 3]), Faces: torch.Size([2000, 3]), Edges: (3000, 2)
+        # vs_groups = None
+        # num_parts = 1
+        # bfs_depth = 0
+        # n = -1
+
         self.main_mesh = main_mesh
         if vs_groups is not None: #TODO is this neccesary?
             self.vs_groups = vs_groups
@@ -337,6 +359,11 @@ class PartMesh:
                 self.vs_groups = PartMesh.grid_segment(self.main_mesh.vs, n=n)
             else:
                 self.vs_groups = PartMesh.segment_shape(self.main_mesh.vs, seg_num=num_parts)
+
+        # self.vs_groups
+        # tensor([0, 0, 0,  ..., 0, 0, 0], device='cuda:0')
+        # (Pdb) self.vs_groups.size()
+        # torch.Size([1002])
         self.n_submeshes = torch.max(self.vs_groups).item() + 1
         self.sub_mesh_index = []
         self.sub_mesh = []

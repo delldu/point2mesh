@@ -4,6 +4,7 @@ import os
 import uuid
 from options import MANIFOLD_DIR
 import glob
+import pdb
 
 def manifold_upsample(mesh, save_path, Mesh, num_faces=2000, res=3000, simplify=True):
     # export before upsample
@@ -17,11 +18,14 @@ def manifold_upsample(mesh, save_path, Mesh, num_faces=2000, res=3000, simplify=
     if not os.path.exists(manifold_script_path):
         raise FileNotFoundError(f'{manifold_script_path} not found')
     cmd = "{} {} {}".format(manifold_script_path, fname, temp_file + opts)
+    # pp cmd
+    # manifold checkpoints/g/recon_2000.obj checkpoints/g/tempe897cea1-f574-4c6e-8435-aec0c6fe93f8.obj 4000
     os.system(cmd)
 
-    if simplify:
+    if simplify: # True
         cmd = "{} -i {} -o {} -f {}".format(os.path.join(MANIFOLD_DIR, 'simplify'), temp_file,
                                                              temp_file, num_faces)
+        # simplify -i checkpoints/g/temp63b9b54a-dfb0-464f-8db2-d46e5bd587f5.obj -o checkpoints/g/temp63b9b54a-dfb0-464f-8db2-d46e5bd587f5.obj -f 3000
         os.system(cmd)
 
     m_out = Mesh(temp_file, hold_history=True, device=mesh.device)
@@ -46,11 +50,13 @@ def read_pts(pts_file):
         for line in spt:
             parts = line.strip().split(' ')
             try:
+                # 0.487186 -0.055504 -0.086017 -0.153297 -0.000000 -0.988180
                 x = np.array(parts, dtype=np.float32)
                 xyz.append(x[:3])
                 normals.append(x[3:])
             except:
                 pass
+    #  pts_file -- './data/g.ply'
     return np.array(xyz, dtype=np.float32), np.array(normals, dtype=np.float32)
 
 

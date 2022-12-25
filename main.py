@@ -7,6 +7,7 @@ from models.losses import chamfer_distance, BeamGapLoss
 from options import Options
 import time
 import os
+import pdb
 
 options = Options()
 opts = options.args
@@ -16,23 +17,32 @@ device = torch.device('cuda:{}'.format(opts.gpu) if torch.cuda.is_available() el
 print('device: {}'.format(device))
 
 # initial mesh
+# opts.initial_mesh -- './data/g_initmesh.obj'
 mesh = Mesh(opts.initial_mesh, device=device, hold_history=True)
 
 # input point cloud
 input_xyz, input_normals = utils.read_pts(opts.input_pc)
+# input_xyz.shape, input_normals.shape -- ((75000, 3), (75000, 3))
+
 # normalize point cloud based on initial mesh
-input_xyz /= mesh.scale
-input_xyz += mesh.translations[None, :]
+input_xyz /= mesh.scale # mesh.scale -- array(0.700467)
+input_xyz += mesh.translations[None, :] #  mesh.translations -- array([-5.16401918e-01,  2.85523803e-06,  4.86817366e-01])
 input_xyz = torch.Tensor(input_xyz).type(options.dtype()).to(device)[None, :, :]
 input_normals = torch.Tensor(input_normals).type(options.dtype()).to(device)[None, :, :]
 
-part_mesh = PartMesh(mesh, num_parts=options.get_num_parts(len(mesh.faces)), bfs_depth=opts.overlap)
+# opts.faces_to_part -- [8000, 16000, 20000]
+# options.get_num_parts(len(mesh.faces)) -- 1
+part_mesh = PartMesh(mesh, num_parts=options.get_num_parts(len(mesh.faces)), bfs_depth=opts.overlap) # opts.overlap -- 0
 print(f'number of parts {part_mesh.n_submeshes}')
 net, optimizer, rand_verts, scheduler = init_net(mesh, part_mesh, device, opts)
+# net -- PartNet
+# rand_verts.size() -- [1, 6, 3000]
+
 
 beamgap_loss = BeamGapLoss(device)
 
-if opts.beamgap_iterations > 0:
+
+if opts.beamgap_iterations > 0: # opts.beamgap_iterations -- 800
     print('beamgap on')
     beamgap_loss.update_pm(part_mesh, torch.cat([input_xyz, input_normals], dim=-1))
 
